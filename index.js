@@ -1,8 +1,11 @@
 const http = require('http')
 const express = require('express')
 const app = express()
-
 app.use(express.json())
+var morgan = require('morgan') //Otetaan morgan käyttöön
+morgan.token('body', (req) => JSON.stringify(req.body)) //Luodaan mukautettu token nimeltä body
+app.use(morgan(':method :url :status :res[content-length] - :response-time ms :body')) //Valitaan, mitä tietoja morgan antaa
+
 
 //Kovakoodatut puhelinnumerot:
 let numbers = [
@@ -99,7 +102,6 @@ app.delete('/api/persons/:id', (request, response) => {
 
     response.json(num)
   })
-
 
 
 const PORT = 3001
