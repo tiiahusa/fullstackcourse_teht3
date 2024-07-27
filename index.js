@@ -5,29 +5,32 @@ app.use(express.json())
 var morgan = require('morgan') //Otetaan morgan käyttöön
 morgan.token('body', (req) => JSON.stringify(req.body)) //Luodaan mukautettu token nimeltä body
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms :body')) //Valitaan, mitä tietoja morgan antaa
-
+const cors = require('cors')
+app.use(cors())
+// Frontend käyttöön
+app.use(express.static('dist'))
 
 //Kovakoodatut puhelinnumerot:
 let numbers = [
     {
       "name": "Arto Hellas",
       "number": "040-123456",
-      "id": "1"
+      "id": 1
     },
     {
       "name": "Ada Lovelace",
       "number": "39-44-5323523",
-      "id": "2"
+      "id": 2
     },
     {
       "name": "Dan Abramov",
       "number": "12-43-234345",
-      "id": "3"
+      "id": 3
     },
     {
       "name": "Mary Poppendieck",
       "number": "39-23-6423122",
-      "id": "4"
+      "id": 4
     }
   ]
 
@@ -62,7 +65,6 @@ app.get('/api/persons/:id', (request, response) => {
 app.delete('/api/persons/:id', (request, response) => {
     const id = request.params.id
     numbers = numbers.filter(num => num.id !== id)
-    console.log(numbers)
   //Palauttaa 204 koodin riippumatta siitä poistetaanko jotain vai ei. 
     response.status(204).end()
   })
@@ -95,7 +97,7 @@ app.delete('/api/persons/:id', (request, response) => {
     const num = {
       name: body.name,
       number: body.number,
-      id: generateId(), //generoidaan id ylemmän komponentin avulla
+      id: generateId().toString(), //generoidaan id ylemmän komponentin avulla
     }
   // Lisätään muistiinpano listaan
     numbers = numbers.concat(num)
@@ -104,7 +106,8 @@ app.delete('/api/persons/:id', (request, response) => {
   })
 
 
-const PORT = 3001
-app.listen(PORT)
-
-console.log(`Server running on port ${PORT}`)
+//Uudet määrittelyt kun siirretään sovellus nettiin, eli porttitieto haetaan nyt ympäristömuuttujasta, jos se on annettu:
+const PORT = process.env.PORT || 3001
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`)
+})
