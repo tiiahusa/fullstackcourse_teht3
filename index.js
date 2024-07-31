@@ -9,30 +9,12 @@ const cors = require('cors')
 app.use(cors())
 // Frontend käyttöön
 app.use(express.static('dist'))
+//Otetaan Person model käyttöön
+const Person = require('./models/person')
 
-//Kovakoodatut puhelinnumerot:
-let numbers = [
-    {
-      "name": "Arto Hellas",
-      "number": "040-123456",
-      "id": 1
-    },
-    {
-      "name": "Ada Lovelace",
-      "number": "39-44-5323523",
-      "id": 2
-    },
-    {
-      "name": "Dan Abramov",
-      "number": "12-43-234345",
-      "id": 3
-    },
-    {
-      "name": "Mary Poppendieck",
-      "number": "39-23-6423122",
-      "id": 4
-    }
-  ]
+const unknownEndpoint = (request, response) => {
+  response.status(404).send({ error: 'unknown endpoint' })
+}
 
 // info sivu, palautetaan taulukon koko ja ajanhetki
 app.get('/info', (request, response) => {
@@ -44,35 +26,26 @@ app.get('/info', (request, response) => {
 
 // puhelinnumerotiedot
 app.get('/api/persons', (request, response) => {
-  response.json(numbers)
+  Person.find({}).then(nums => {
+    response.json(nums)
+  })
 })
 
 // Yksittäisen ID:n näyttö
 app.get('/api/persons/:id', (request, response) => {
-    //Poimitaan parametri id http get-pyynnöstä:
-    const id = request.params.id
-    // Etsitään oikea muistiinpano ja palautetaan se
-    const number = numbers.find(number => number.id === id)
-    //Tarkistus vielä, että löytyykö numero ja jos ei niin palautetaan virhe
-    if (number) {
-        response.json(number)
-      } else {
-        response.status(404).end() // End perässä ilmoittamassa, että mitään dataa ei tule
-      }
+    Person.findById(request.params.id).then(nums => {
+      response.json(nums)
+    })
   })
 
-  // Yksittäisen ID:n poisto
-app.delete('/api/persons/:id', (request, response) => {
-    const id = request.params.id
-    numbers = numbers.filter(num => num.id !== id)
-  //Palauttaa 204 koodin riippumatta siitä poistetaanko jotain vai ei. 
-    response.status(204).end()
-  })
-
-//Uudelle muistiinpanolle tarvitaan uniikki id ja se tehdään etsimällä suurin id ja lisäämällä siihen 1
-  const generateId = () => {
-    return parseInt(Math.random()*100000)
-  }
+  //ID:n poisto
+app.delete('/api/persons/:id', (request, response, next) => {
+  Person.findByIdAndDelete(request.params.id)
+    .then(result => {
+      response.status(204).end()
+    })
+    .catch(error => next(error))
+})
 
   //POST-pyyntö
   app.post('/api/persons', (request, response) => {
@@ -88,26 +61,38 @@ app.delete('/api/persons/:id', (request, response) => {
       return response.status(400).json({ 
         error: 'number missing' 
       })
-    } else if (numbers.find((num) => num.name == body.name)) { // Tarkistetaan nimi, että löytyykö listasta
-        return response.status(400).json({ 
-          error: 'name must be unique' 
-        })
-      }
-  // luodaan note ja jos important arvoa ei ole, se on oletusarvoisesti false
+    } 
+  // Luodaan Person-tieto
+    const num = new Person({
+      name: body.name,
+      number: body.number,
+    })
+    //Tallennetaan tieto
+    num.save().then(savedNum => { 
+      response.json(savedNum)  
+    })
+  })
+
+//Muistiinpanon päivitys
+  app.put('/api/notes/:id', (request, response, next) => {
+    const body = request.body //poimitaan 
+        
     const num = {
       name: body.name,
       number: body.number,
-      id: generateId().toString(), //generoidaan id ylemmän komponentin avulla
     }
-  // Lisätään muistiinpano listaan
-    numbers = numbers.concat(num)
-
-    response.json(num)
+      
+  Person.findByIdAndUpdate(request.params.id, num)
+    .then(updatedPerson => {
+      response.json(updatedPerson)
+    })
+    .catch(error => next(error))
   })
 
+  app.use(unknownEndpoint)
 
-//Uudet määrittelyt kun siirretään sovellus nettiin, eli porttitieto haetaan nyt ympäristömuuttujasta, jos se on annettu:
-const PORT = process.env.PORT || 3001
+//Porttitieto haetaan ympäristömuuttujasta
+const PORT = process.env.PORT 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
 })
