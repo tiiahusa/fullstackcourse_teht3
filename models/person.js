@@ -15,8 +15,19 @@ mongoose.connect(url)
   })
 
 const personSchema = new mongoose.Schema({ //Luodaan skeema henkilötiedolle
-  name: String,
-  number: String,
+  name: {
+    type: String,
+    minlength: 3,
+    required: true
+  },
+  number: {
+    type: String,
+    validate: {
+        validator: function(v) {
+            return /\d{3}-\d{5}|\d{2}-\d{6}/.test(v)
+        }
+    }
+  },
 })
 
 personSchema.set('toJSON', { //Muutetaan toJSON-vastausta niin, että muutetaan id objektista stringiksi ja poistetaan turhat __v ja objekti-id vastauksesta
@@ -27,5 +38,5 @@ personSchema.set('toJSON', { //Muutetaan toJSON-vastausta niin, että muutetaan 
   }
 })
 
-//Moduulin ulos näkyvä osa määritellään hieman eri tavalla kuin aiemmin. 
+//Moduulin ulos näkyvä osan määrittely 
 module.exports = mongoose.model('Person', personSchema)
