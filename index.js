@@ -12,16 +12,17 @@ app.use(express.static('dist'))
 //Otetaan Person model käyttöön
 const Person = require('./models/person')
 
-const unknownEndpoint = (request, response) => {
-  response.status(404).send({ error: 'unknown endpoint' })
-}
-
 // info sivu, palautetaan taulukon koko ja ajanhetki
-app.get('/info', (request, response) => {
-  response.send(
-    `<p>Phonebook has info for ${numbers.length} people</p>
-    <p>${Date(Date.now())}</p>`
-    )
+app.get('/info', async (request, response) => {
+  try {
+    const count = await Person.countDocuments({});
+    response.send(
+      `<p>Phonebook has info for ${count} people</p>
+      <p>${new Date().toString()}</p>`
+    );
+  } catch (err) {
+    response.status(500).send('Server error');
+  }
 })
 
 // puhelinnumerotiedot
@@ -36,6 +37,7 @@ app.get('/api/persons/:id', (request, response) => {
     Person.findById(request.params.id).then(nums => {
       response.json(nums)
     })
+    .catch(error => next(error))
   })
 
   //ID:n poisto
@@ -74,7 +76,7 @@ app.delete('/api/persons/:id', (request, response, next) => {
   })
 
 //Muistiinpanon päivitys
-  app.put('/api/notes/:id', (request, response, next) => {
+  app.put('/api/persons/:id', (request, response, next) => {
     const body = request.body //poimitaan 
         
     const num = {
@@ -82,14 +84,37 @@ app.delete('/api/persons/:id', (request, response, next) => {
       number: body.number,
     }
       
-  Person.findByIdAndUpdate(request.params.id, num)
+  Person.findByIdAndUpdate(request.params.id, num, { new: true })
     .then(updatedPerson => {
-      response.json(updatedPerson)
+      // Jos henkilö löytyy
+      if(updatedPerson) {
+        response.json(updatedPerson)
+      } else {
+        response.status(404).end()
+      }
     })
-    .catch(error => next(error))
+    .catch(error => {
+      next(error)
+    })
   })
 
+  const unknownEndpoint = (request, response) => {
+    response.status(404).send({ error: 'unknown endpoint' })
+  }
+
   app.use(unknownEndpoint)
+
+  const errorHandler = (error, request, response, next) => {
+    console.error(error.message)
+  
+    if (error.name === 'CastError') {
+      return response.status(400).send({ error: 'malformatted id' })
+    }
+  
+    next(error)
+  }
+
+  app.use(errorHandler)
 
 //Porttitieto haetaan ympäristömuuttujasta
 const PORT = process.env.PORT 
